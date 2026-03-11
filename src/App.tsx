@@ -40,7 +40,7 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured } from './supabase';
 
 // Types
 type Status = 'RESOLVIDO' | 'MANTER' | 'SEM CONTATO';
@@ -203,7 +203,27 @@ export default function App() {
     e.preventDefault();
     setLoginError('');
     
+    if (!isSupabaseConfigured) {
+      setLoginError('Supabase não configurado. Verifique as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
+      return;
+    }
+
     try {
+      // Verificar se a tabela existe e se há usuários
+      const { count, error: countError } = await supabase
+        .from('app_users')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) {
+        setLoginError(`Erro ao acessar banco de dados: ${countError.message}. Verifique se a tabela 'app_users' foi criada.`);
+        return;
+      }
+
+      if (count === 0) {
+        setLoginError('Nenhum usuário cadastrado. Você precisa criar o primeiro usuário diretamente no painel do Supabase.');
+        return;
+      }
+
       const { data, error } = await supabase
         .from('app_users')
         .select('*')
@@ -211,15 +231,24 @@ export default function App() {
         .eq('password', loginPassword)
         .single();
 
-      if (error || !data) {
+      if (error) {
+        if (error.code === 'PGRST116') {
+          setLoginError('Usuário ou senha inválidos');
+        } else {
+          setLoginError(`Erro Supabase: ${error.message}`);
+        }
+        return;
+      }
+
+      if (!data) {
         setLoginError('Usuário ou senha inválidos');
         return;
       }
 
       setCurrentUser(data);
       setIsLoggedIn(true);
-    } catch (error) {
-      setLoginError('Erro ao conectar ao servidor');
+    } catch (error: any) {
+      setLoginError(`Erro de conexão: ${error.message || 'Erro desconhecido'}`);
     }
   };
 
