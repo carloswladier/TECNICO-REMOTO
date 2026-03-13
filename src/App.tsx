@@ -19,6 +19,7 @@ import {
   AlertCircle, 
   X,
   Trash2,
+  Pencil,
   ChevronDown,
   Lock,
   User,
@@ -120,6 +121,7 @@ export default function App() {
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [systemUsers, setSystemUsers] = useState<AppUser[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<Status | 'TODOS'>('TODOS');
@@ -286,7 +288,20 @@ export default function App() {
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setEditingOrder(null);
     setIsOtherCity(false);
+    setFormData({
+      status: 'RESOLVIDO',
+      tipo_os: 'VT VIRTUA',
+      data: new Date().toISOString().split('T')[0]
+    });
+  };
+
+  const handleEditOrder = (order: ServiceOrder) => {
+    setEditingOrder(order);
+    setFormData(order);
+    setIsOtherCity(!CIDADE_OPTIONS.includes(order.cidade));
+    setIsModalOpen(true);
   };
 
   const handleLogout = () => {
@@ -300,7 +315,7 @@ export default function App() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newOrder: Omit<ServiceOrder, 'id'> = {
+    const orderData: Omit<ServiceOrder, 'id'> = {
       tecnico: formData.tecnico!,
       cidade: formData.cidade!,
       data: formData.data!,
@@ -311,26 +326,34 @@ export default function App() {
       codigo_cancelamento: formData.codigo_cancelamento || '',
       node: formData.node || '',
       observacao: formData.observacao || '',
-      created_at: Date.now(),
-      created_by: currentUser?.username || 'admin'
+      created_at: editingOrder ? editingOrder.created_at : Date.now(),
+      created_by: editingOrder ? editingOrder.created_by : (currentUser?.username || 'admin')
     };
 
     try {
-      const { data, error } = await supabase
-        .from('service_orders')
-        .insert([newOrder])
-        .select();
+      if (editingOrder) {
+        const { data, error } = await supabase
+          .from('service_orders')
+          .update(orderData)
+          .eq('id', editingOrder.id)
+          .select();
 
-      if (error) throw error;
-      if (data) {
-        setOrders([data[0], ...orders]);
-        setIsModalOpen(false);
-        setIsOtherCity(false);
-        setFormData({
-          status: 'RESOLVIDO',
-          tipo_os: 'VT VIRTUA',
-          data: new Date().toISOString().split('T')[0]
-        });
+        if (error) throw error;
+        if (data) {
+          setOrders(orders.map(o => o.id === editingOrder.id ? data[0] : o));
+          closeModal();
+        }
+      } else {
+        const { data, error } = await supabase
+          .from('service_orders')
+          .insert([orderData])
+          .select();
+
+        if (error) throw error;
+        if (data) {
+          setOrders([data[0], ...orders]);
+          closeModal();
+        }
       }
     } catch (error) {
       console.error('Error saving order:', error);
@@ -846,12 +869,22 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <button 
-                                onClick={() => deleteOrder(order.id)}
-                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                              >
-                                <Trash2 size={18} />
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button 
+                                  onClick={() => handleEditOrder(order)}
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                  title="Editar"
+                                >
+                                  <Pencil size={18} />
+                                </button>
+                                <button 
+                                  onClick={() => deleteOrder(order.id)}
+                                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                  title="Excluir"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
                             </td>
                           </motion.tr>
                         ))
@@ -1024,7 +1057,9 @@ export default function App() {
               className="relative bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <h2 className="text-lg font-bold text-slate-900">Nova Ordem de Serviço</h2>
+                <h2 className="text-lg font-bold text-slate-900">
+                  {editingOrder ? 'Editar Ordem de Serviço' : 'Nova Ordem de Serviço'}
+                </h2>
                 <button onClick={closeModal} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                   <X size={20} />
                 </button>
@@ -1192,7 +1227,7 @@ export default function App() {
                     type="submit"
                     className="flex-1 px-4 py-2.5 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 shadow-lg shadow-red-200 active:scale-95 transition-all"
                   >
-                    Salvar Registro
+                    {editingOrder ? 'Atualizar Registro' : 'Salvar Registro'}
                   </button>
                 </div>
               </form>
