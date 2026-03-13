@@ -39,8 +39,7 @@ import {
   ResponsiveContainer, 
   PieChart, 
   Pie, 
-  Cell,
-  LabelList
+  Cell 
 } from 'recharts';
 import { supabase, isSupabaseConfigured } from './supabase';
 
@@ -644,55 +643,41 @@ export default function App() {
                   </div>
                 )}
 
-                {/* City Filter (Multi-select) */}
+                {/* City Multi-Filter */}
                 {currentUser?.role === 'ADMIN' && (
                   <div className="relative group">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <div className="w-full pl-10 pr-8 py-2 border border-slate-200 rounded-lg bg-white cursor-pointer min-h-[42px] flex flex-wrap gap-1 items-center">
-                      {filterCities.length === 0 ? (
-                        <span className="text-slate-500 text-sm">Cidades</span>
-                      ) : (
-                        filterCities.map(city => (
-                          <span key={city} className="bg-red-100 text-red-700 text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
-                            {city}
-                            <X size={10} className="cursor-pointer" onClick={(e) => {
-                              e.stopPropagation();
-                              setFilterCities(filterCities.filter(c => c !== city));
-                            }} />
-                          </span>
-                        ))
-                      )}
+                    <div className="w-full pl-10 pr-8 py-2 border border-slate-200 rounded-lg bg-white text-sm cursor-pointer flex items-center justify-between min-h-[42px]">
+                      <span className="truncate">
+                        {filterCities.length === 0 ? 'Cidades (Todas)' : `${filterCities.length} selecionada(s)`}
+                      </span>
+                      <ChevronDown size={16} className="text-slate-400" />
                     </div>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                     
-                    {/* Dropdown for multi-select */}
-                    <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-20 hidden group-hover:block max-h-60 overflow-y-auto p-2">
-                      <div 
-                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer text-sm font-medium border-b border-slate-100 mb-1"
+                    <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 hidden group-hover:block max-h-60 overflow-y-auto p-2">
+                      <button 
                         onClick={() => setFilterCities([])}
+                        className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold mb-1 ${filterCities.length === 0 ? 'bg-red-50 text-red-600' : 'hover:bg-slate-50 text-slate-600'}`}
                       >
-                        <div className={`w-4 h-4 border rounded flex items-center justify-center ${filterCities.length === 0 ? 'bg-red-600 border-red-600' : 'border-slate-300'}`}>
-                          {filterCities.length === 0 && <CheckCircle2 size={10} className="text-white" />}
-                        </div>
-                        Todas as Cidades
-                      </div>
+                        TODAS AS CIDADES
+                      </button>
+                      <div className="h-[1px] bg-slate-100 my-1" />
                       {uniqueCities.map(city => (
-                        <div 
-                          key={city} 
-                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded cursor-pointer text-sm"
-                          onClick={() => {
-                            if (filterCities.includes(city)) {
-                              setFilterCities(filterCities.filter(c => c !== city));
-                            } else {
-                              setFilterCities([...filterCities, city]);
-                            }
-                          }}
-                        >
-                          <div className={`w-4 h-4 border rounded flex items-center justify-center ${filterCities.includes(city) ? 'bg-red-600 border-red-600' : 'border-slate-300'}`}>
-                            {filterCities.includes(city) && <CheckCircle2 size={10} className="text-white" />}
-                          </div>
-                          {city}
-                        </div>
+                        <label key={city} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 rounded-lg cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-slate-300 text-red-600 focus:ring-red-500"
+                            checked={filterCities.includes(city)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFilterCities([...filterCities, city]);
+                              } else {
+                                setFilterCities(filterCities.filter(c => c !== city));
+                              }
+                            }}
+                          />
+                          <span className="text-xs font-medium text-slate-700">{city}</span>
+                        </label>
                       ))}
                     </div>
                   </div>
@@ -795,15 +780,9 @@ export default function App() {
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                           />
                           <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px' }} />
-                          <Bar dataKey="RESOLVIDO" stackId="a" fill={COLORS.RESOLVIDO} radius={[0, 0, 0, 0]} barSize={32}>
-                            <LabelList dataKey="RESOLVIDO" position="inside" fill="#fff" fontSize={10} formatter={(v: number) => v > 0 ? v : ''} />
-                          </Bar>
-                          <Bar dataKey="MANTER" stackId="a" fill={COLORS.MANTER} radius={[0, 0, 0, 0]} barSize={32}>
-                            <LabelList dataKey="MANTER" position="inside" fill="#fff" fontSize={10} formatter={(v: number) => v > 0 ? v : ''} />
-                          </Bar>
-                          <Bar dataKey="SEM CONTATO" stackId="a" fill={COLORS['SEM CONTATO']} radius={[6, 6, 0, 0]} barSize={32}>
-                            <LabelList dataKey="SEM CONTATO" position="inside" fill="#fff" fontSize={10} formatter={(v: number) => v > 0 ? v : ''} />
-                          </Bar>
+                          <Bar dataKey="RESOLVIDO" stackId="a" fill={COLORS.RESOLVIDO} radius={[0, 0, 0, 0]} barSize={32} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                          <Bar dataKey="MANTER" stackId="a" fill={COLORS.MANTER} radius={[0, 0, 0, 0]} barSize={32} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                          <Bar dataKey="SEM CONTATO" stackId="a" fill={COLORS['SEM CONTATO']} radius={[6, 6, 0, 0]} barSize={32} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -834,15 +813,9 @@ export default function App() {
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                           />
                           <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px' }} />
-                          <Bar dataKey="RESOLVIDO" stackId="a" fill={COLORS.RESOLVIDO} barSize={40}>
-                            <LabelList dataKey="RESOLVIDO" position="inside" fill="#fff" fontSize={10} formatter={(v: number) => v > 0 ? v : ''} />
-                          </Bar>
-                          <Bar dataKey="MANTER" stackId="a" fill={COLORS.MANTER} barSize={40}>
-                            <LabelList dataKey="MANTER" position="inside" fill="#fff" fontSize={10} formatter={(v: number) => v > 0 ? v : ''} />
-                          </Bar>
-                          <Bar dataKey="SEM CONTATO" stackId="a" fill={COLORS['SEM CONTATO']} radius={[6, 6, 0, 0]} barSize={40}>
-                            <LabelList dataKey="SEM CONTATO" position="inside" fill="#fff" fontSize={10} formatter={(v: number) => v > 0 ? v : ''} />
-                          </Bar>
+                          <Bar dataKey="RESOLVIDO" stackId="a" fill={COLORS.RESOLVIDO} barSize={40} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                          <Bar dataKey="MANTER" stackId="a" fill={COLORS.MANTER} barSize={40} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                          <Bar dataKey="SEM CONTATO" stackId="a" fill={COLORS['SEM CONTATO']} radius={[6, 6, 0, 0]} barSize={40} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -863,7 +836,6 @@ export default function App() {
                       <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
                       <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo de OS</th>
                       <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Informações</th>
                       <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Node</th>
                       <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                     </tr>
@@ -915,25 +887,6 @@ export default function App() {
                                 {getStatusIcon(order.status)}
                                 {order.status}
                               </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="min-w-[150px] max-w-[400px]">
-                                {order.reclamacao && (
-                                  <div className="text-[10px] text-slate-500 mb-1" title={order.reclamacao}>
-                                    <span className="font-bold text-slate-700">Rec:</span> {order.reclamacao}
-                                  </div>
-                                )}
-                                {order.observacao && (
-                                  <div className="text-[10px] text-slate-500" title={order.observacao}>
-                                    <span className="font-bold text-slate-700">Obs:</span> {order.observacao}
-                                  </div>
-                                )}
-                                {order.codigo_cancelamento && (
-                                  <div className="text-[10px] text-red-500 mt-1">
-                                    <span className="font-bold">Canc:</span> {order.codigo_cancelamento}
-                                  </div>
-                                )}
-                              </div>
                             </td>
                             <td className="px-6 py-4">
                               <div className="text-sm font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-600 inline-block">
