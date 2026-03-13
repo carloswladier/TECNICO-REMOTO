@@ -128,7 +128,7 @@ export default function App() {
   const [filterDateStart, setFilterDateStart] = useState('');
   const [filterDateEnd, setFilterDateEnd] = useState('');
   const [filterTechnician, setFilterTechnician] = useState('TODOS');
-  const [filterCity, setFilterCity] = useState('TODOS');
+  const [filterCities, setFilterCities] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOtherCity, setIsOtherCity] = useState(false);
 
@@ -386,7 +386,7 @@ export default function App() {
     
     const matchesStatus = filterStatus === 'TODOS' || order.status === filterStatus;
     const matchesTechnician = filterTechnician === 'TODOS' || order.tecnico === filterTechnician;
-    const matchesCity = filterCity === 'TODOS' || order.cidade === filterCity;
+    const matchesCity = filterCities.length === 0 || filterCities.includes(order.cidade);
     
     let matchesDate = true;
     if (filterDateStart) {
@@ -590,130 +590,6 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'ORDERS' ? (
           <>
-            {/* Stats & Charts Section */}
-            {currentUser?.role === 'ADMIN' && (
-              <>
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total</p>
-                    <p className="text-2xl font-bold">{filteredOrders.length}</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Resolvido</p>
-                    <p className="text-2xl font-bold">{filteredOrders.filter(o => o.status === 'RESOLVIDO').length}</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-1">Manter</p>
-                    <p className="text-2xl font-bold">{filteredOrders.filter(o => o.status === 'MANTER').length}</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    <p className="text-xs font-semibold text-rose-600 uppercase tracking-wider mb-1">Sem Contato</p>
-                    <p className="text-2xl font-bold">{filteredOrders.filter(o => o.status === 'SEM CONTATO').length}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
-                  {/* Status Pie Chart */}
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[400px] lg:col-span-4 flex flex-col">
-                    <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-6 flex items-center gap-2">
-                      <div className="w-1 h-4 bg-red-600 rounded-full" />
-                      Volume por Status
-                    </h3>
-                    <div className="flex-1 min-h-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={statusData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={70}
-                            outerRadius={90}
-                            paddingAngle={8}
-                            dataKey="value"
-                            stroke="none"
-                          >
-                            {statusData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS]} />
-                            ))}
-                          </Pie>
-                          <Tooltip 
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                          />
-                          <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  {/* Technician Bar Chart */}
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[400px] lg:col-span-8 flex flex-col">
-                    <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-6 flex items-center gap-2">
-                      <div className="w-1 h-4 bg-red-600 rounded-full" />
-                      Desempenho por Técnico
-                    </h3>
-                    <div className="flex-1 min-h-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={techData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis 
-                            dataKey="name" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
-                            angle={-15}
-                            textAnchor="end"
-                            interval={0}
-                          />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                          <Tooltip 
-                            cursor={{ fill: '#f8fafc' }}
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                          />
-                          <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px' }} />
-                          <Bar dataKey="RESOLVIDO" stackId="a" fill={COLORS.RESOLVIDO} radius={[0, 0, 0, 0]} barSize={32} />
-                          <Bar dataKey="MANTER" stackId="a" fill={COLORS.MANTER} radius={[0, 0, 0, 0]} barSize={32} />
-                          <Bar dataKey="SEM CONTATO" stackId="a" fill={COLORS['SEM CONTATO']} radius={[6, 6, 0, 0]} barSize={32} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  {/* City Bar Chart */}
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[400px] lg:col-span-12 flex flex-col">
-                    <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-6 flex items-center gap-2">
-                      <div className="w-1 h-4 bg-red-600 rounded-full" />
-                      Volume por Cidade
-                    </h3>
-                    <div className="flex-1 min-h-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={cityData} margin={{ top: 10, right: 20, left: -10, bottom: 40 }}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis 
-                            dataKey="name" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
-                            angle={-25}
-                            textAnchor="end"
-                            interval={0}
-                          />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
-                          <Tooltip 
-                            cursor={{ fill: '#f8fafc' }}
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                          />
-                          <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px' }} />
-                          <Bar dataKey="RESOLVIDO" stackId="a" fill={COLORS.RESOLVIDO} barSize={40} />
-                          <Bar dataKey="MANTER" stackId="a" fill={COLORS.MANTER} barSize={40} />
-                          <Bar dataKey="SEM CONTATO" stackId="a" fill={COLORS['SEM CONTATO']} radius={[6, 6, 0, 0]} barSize={40} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
             {/* Filters Section */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mb-8">
               <div className={`grid grid-cols-1 md:grid-cols-2 ${currentUser?.role === 'ADMIN' ? 'lg:grid-cols-6' : 'lg:grid-cols-4'} gap-4`}>
@@ -767,19 +643,43 @@ export default function App() {
                   </div>
                 )}
 
-                {/* City Filter */}
+                {/* City Multi-Filter */}
                 {currentUser?.role === 'ADMIN' && (
-                  <div className="relative">
+                  <div className="relative group">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <select
-                      className="w-full pl-10 pr-8 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 appearance-none transition-all cursor-pointer bg-white"
-                      value={filterCity}
-                      onChange={(e) => setFilterCity(e.target.value)}
-                    >
-                      <option value="TODOS">Cidades</option>
-                      {uniqueCities.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                    <div className="w-full pl-10 pr-8 py-2 border border-slate-200 rounded-lg bg-white text-sm cursor-pointer flex items-center justify-between min-h-[42px]">
+                      <span className="truncate">
+                        {filterCities.length === 0 ? 'Cidades (Todas)' : `${filterCities.length} selecionada(s)`}
+                      </span>
+                      <ChevronDown size={16} className="text-slate-400" />
+                    </div>
+                    
+                    <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 hidden group-hover:block max-h-60 overflow-y-auto p-2">
+                      <button 
+                        onClick={() => setFilterCities([])}
+                        className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold mb-1 ${filterCities.length === 0 ? 'bg-red-50 text-red-600' : 'hover:bg-slate-50 text-slate-600'}`}
+                      >
+                        TODAS AS CIDADES
+                      </button>
+                      <div className="h-[1px] bg-slate-100 my-1" />
+                      {uniqueCities.map(city => (
+                        <label key={city} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 rounded-lg cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="rounded border-slate-300 text-red-600 focus:ring-red-500"
+                            checked={filterCities.includes(city)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFilterCities([...filterCities, city]);
+                              } else {
+                                setFilterCities(filterCities.filter(c => c !== city));
+                              }
+                            }}
+                          />
+                          <span className="text-xs font-medium text-slate-700">{city}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -798,6 +698,131 @@ export default function App() {
                 </div>
               </div>
             </div>
+
+            {/* Stats & Charts Section */}
+            {currentUser?.role === 'ADMIN' && (
+              <>
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total</p>
+                    <p className="text-2xl font-bold">{filteredOrders.length}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Resolvido</p>
+                    <p className="text-2xl font-bold">{filteredOrders.filter(o => o.status === 'RESOLVIDO').length}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-1">Manter</p>
+                    <p className="text-2xl font-bold">{filteredOrders.filter(o => o.status === 'MANTER').length}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <p className="text-xs font-semibold text-rose-600 uppercase tracking-wider mb-1">Sem Contato</p>
+                    <p className="text-2xl font-bold">{filteredOrders.filter(o => o.status === 'SEM CONTATO').length}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+                  {/* Status Pie Chart */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[400px] lg:col-span-4 flex flex-col">
+                    <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-6 flex items-center gap-2">
+                      <div className="w-1 h-4 bg-red-600 rounded-full" />
+                      Volume por Status
+                    </h3>
+                    <div className="flex-1 min-h-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={statusData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={70}
+                            outerRadius={90}
+                            paddingAngle={8}
+                            dataKey="value"
+                            stroke="none"
+                            label={({ name, value }) => `${value}`}
+                          >
+                            {statusData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS]} />
+                            ))}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                          />
+                          <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Technician Bar Chart */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[400px] lg:col-span-8 flex flex-col">
+                    <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-6 flex items-center gap-2">
+                      <div className="w-1 h-4 bg-red-600 rounded-full" />
+                      Desempenho por Técnico
+                    </h3>
+                    <div className="flex-1 min-h-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={techData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis 
+                            dataKey="name" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                            angle={-15}
+                            textAnchor="end"
+                            interval={0}
+                          />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                          <Tooltip 
+                            cursor={{ fill: '#f8fafc' }}
+                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                          />
+                          <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px' }} />
+                          <Bar dataKey="RESOLVIDO" stackId="a" fill={COLORS.RESOLVIDO} radius={[0, 0, 0, 0]} barSize={32} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                          <Bar dataKey="MANTER" stackId="a" fill={COLORS.MANTER} radius={[0, 0, 0, 0]} barSize={32} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                          <Bar dataKey="SEM CONTATO" stackId="a" fill={COLORS['SEM CONTATO']} radius={[6, 6, 0, 0]} barSize={32} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* City Bar Chart */}
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[400px] lg:col-span-12 flex flex-col">
+                    <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-6 flex items-center gap-2">
+                      <div className="w-1 h-4 bg-red-600 rounded-full" />
+                      Volume por Cidade
+                    </h3>
+                    <div className="flex-1 min-h-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={cityData} margin={{ top: 10, right: 20, left: -10, bottom: 40 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis 
+                            dataKey="name" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fontSize: 11, fill: '#64748b', fontWeight: 500 }}
+                            angle={-25}
+                            textAnchor="end"
+                            interval={0}
+                          />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} />
+                          <Tooltip 
+                            cursor={{ fill: '#f8fafc' }}
+                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                          />
+                          <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px' }} />
+                          <Bar dataKey="RESOLVIDO" stackId="a" fill={COLORS.RESOLVIDO} barSize={40} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                          <Bar dataKey="MANTER" stackId="a" fill={COLORS.MANTER} barSize={40} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                          <Bar dataKey="SEM CONTATO" stackId="a" fill={COLORS['SEM CONTATO']} radius={[6, 6, 0, 0]} barSize={40} label={{ position: 'inside', fill: '#fff', fontSize: 10, fontWeight: 'bold' }} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Table */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
