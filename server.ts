@@ -23,6 +23,7 @@ async function startServer() {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: parseInt(process.env.DB_PORT || '3306'),
+    connectTimeout: 10000, // 10 segundos de timeout
   };
 
   let pool: mysql.Pool | null = null;
@@ -30,11 +31,20 @@ async function startServer() {
   // Função para obter conexão (Lazy initialization)
   async function getPool() {
     if (!pool) {
-      if (!process.env.DB_HOST) {
-        console.warn('Variáveis de ambiente do banco de dados não configuradas.');
-        return null;
+      if (!process.env.DB_HOST || process.env.DB_HOST === 'localhost' || process.env.DB_HOST === '127.0.0.1') {
+        throw new Error('CONFIG_ERROR: O DB_HOST não foi configurado corretamente nas Settings. Ele deve ser o endereço do servidor da Hostinger (ex: sqlXXX.main-hosting.eu).');
       }
-      pool = mysql.createPool(dbConfig);
+      
+      try {
+        pool = mysql.createPool(dbConfig);
+        // Testar a conexão imediatamente
+        const connection = await pool.getConnection();
+        connection.release();
+        console.log('Conexão com Hostinger MySQL estabelecida com sucesso!');
+      } catch (err: any) {
+        console.error('Erro ao conectar ao MySQL:', err.message);
+        throw new Error(`CONNECTION_ERROR: Não foi possível conectar ao banco da Hostinger. Verifique se o Host, Usuário e Senha estão corretos e se o acesso remoto está liberado. Detalhe: ${err.message}`);
+      }
     }
     return pool;
   }
@@ -47,10 +57,10 @@ async function startServer() {
   // Login
   app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
-    const db = await getPool();
-    if (!db) return res.status(500).json({ error: 'DB not configured' });
-
     try {
+      const db = await getPool();
+      if (!db) return res.status(500).json({ error: 'DB not configured' });
+
       const [rows]: any = await db.execute(
         'SELECT id, username, role, created_at FROM app_users WHERE username = ? AND password = ?',
         [username, password]
@@ -68,10 +78,10 @@ async function startServer() {
   // Get Orders
   app.get('/api/orders', async (req, res) => {
     const { username, role } = req.query;
-    const db = await getPool();
-    if (!db) return res.status(500).json({ error: 'DB not configured' });
-
     try {
+      const db = await getPool();
+      if (!db) return res.status(500).json({ error: 'DB not configured' });
+
       let query = 'SELECT * FROM service_orders';
       let params: any[] = [];
 
@@ -91,10 +101,10 @@ async function startServer() {
   // Create/Update Order
   app.post('/api/orders', async (req, res) => {
     const order = req.body;
-    const db = await getPool();
-    if (!db) return res.status(500).json({ error: 'DB not configured' });
-
     try {
+      const db = await getPool();
+      if (!db) return res.status(500).json({ error: 'DB not configured' });
+
       if (order.id) {
         // Update
         await db.execute(
@@ -131,10 +141,10 @@ async function startServer() {
 
   // Delete Order
   app.delete('/api/orders/:id', async (req, res) => {
-    const db = await getPool();
-    if (!db) return res.status(500).json({ error: 'DB not configured' });
-
     try {
+      const db = await getPool();
+      if (!db) return res.status(500).json({ error: 'DB not configured' });
+
       await db.execute('DELETE FROM service_orders WHERE id = ?', [req.params.id]);
       res.json({ success: true });
     } catch (error: any) {
@@ -144,10 +154,10 @@ async function startServer() {
 
   // Users Management (Admin only)
   app.get('/api/users', async (req, res) => {
-    const db = await getPool();
-    if (!db) return res.status(500).json({ error: 'DB not configured' });
-
     try {
+      const db = await getPool();
+      if (!db) return res.status(500).json({ error: 'DB not configured' });
+
       const [rows] = await db.execute('SELECT id, username, role, created_at FROM app_users');
       res.json(rows);
     } catch (error: any) {
@@ -157,10 +167,10 @@ async function startServer() {
 
   app.post('/api/users', async (req, res) => {
     const { username, password, role } = req.body;
-    const db = await getPool();
-    if (!db) return res.status(500).json({ error: 'DB not configured' });
-
     try {
+      const db = await getPool();
+      if (!db) return res.status(500).json({ error: 'DB not configured' });
+
       const [result]: any = await db.execute(
         'INSERT INTO app_users (username, password, role, created_at) VALUES (?, ?, ?, NOW())',
         [username, password, role]
@@ -172,10 +182,10 @@ async function startServer() {
   });
 
   app.delete('/api/users/:id', async (req, res) => {
-    const db = await getPool();
-    if (!db) return res.status(500).json({ error: 'DB not configured' });
-
     try {
+      const db = await getPool();
+      if (!db) return res.status(500).json({ error: 'DB not configured' });
+
       await db.execute('DELETE FROM app_users WHERE id = ?', [req.params.id]);
       res.json({ success: true });
     } catch (error: any) {
@@ -198,9 +208,20 @@ async function startServer() {
     });
   }
 
+  // Global error handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('Unhandled Error:', err);
+    res.status(500).json({ error: err.message || 'Erro interno do servidor' });
+  });
+
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
+    console.log(`[SERVER] Servidor rodando em http://localhost:${PORT}`);
+    console.log(`[SERVER] Modo: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`[SERVER] DB_HOST configurado: ${!!process.env.DB_HOST}`);
   });
 }
 
-startServer();
+console.log('[SERVER] Iniciando servidor...');
+startServer().catch(err => {
+  console.error('[SERVER] Falha crítica ao iniciar servidor:', err);
+});

@@ -201,8 +201,15 @@ export default function App() {
       });
 
       if (!response.ok) {
-        const err = await response.json();
-        setLoginError(err.error || 'Erro ao entrar');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const err = await response.json();
+          setLoginError(err.error || 'Erro ao entrar');
+        } else {
+          const text = await response.text();
+          console.error('Server returned non-JSON error:', text);
+          setLoginError('O servidor retornou um erro inesperado (HTML). Verifique se o banco de dados está configurado corretamente nas Settings.');
+        }
         return;
       }
 
