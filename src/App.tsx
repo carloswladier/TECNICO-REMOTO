@@ -27,6 +27,7 @@ import {
   LogOut,
   ShieldCheck
 } from 'lucide-react';
+
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart, 
@@ -41,9 +42,6 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
-import { supabase, isSupabaseConfigured } from './supabase';
-
-// Types
 type Status = 'RESOLVIDO' | 'MANTER' | 'SEM CONTATO';
 type TipoOS = 'VT VIRTUA' | 'VT DIGITAL' | 'VT VOIP' | 'VT MESH' | 'VT NOW' | 'VT WIFI 360' | 'VT STREAMING';
 type UserRole = 'ADMIN' | 'EDITOR';
@@ -169,19 +167,10 @@ export default function App() {
   async function fetchOrders() {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from('service_orders')
-        .select('*');
-
-      // Regra de Visibilidade: Se não for ADMIN, filtra pelo próprio usuário
-      if (currentUser?.role !== 'ADMIN') {
-        query = query.eq('created_by', currentUser?.username);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) throw error;
-      if (data) setOrders(data);
+      const response = await fetch(`/api/orders?username=${currentUser?.username}&role=${currentUser?.role}`);
+      if (!response.ok) throw new Error('Erro ao buscar ordens');
+      const data = await response.json();
+      setOrders(data);
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
@@ -191,11 +180,10 @@ export default function App() {
 
   async function fetchUsers() {
     try {
-      const { data, error } = await supabase
-        .from('app_users')
-        .select('id, username, role, created_at');
-      if (error) throw error;
-      if (data) setSystemUsers(data);
+      const response = await fetch('/api/users');
+      if (!response.ok) throw new Error('Erro ao buscar usuários');
+      const data = await response.json();
+      setSystemUsers(data);
     } catch (error) {
       console.error('Error fetching users:', error);
     }
@@ -205,48 +193,20 @@ export default function App() {
     e.preventDefault();
     setLoginError('');
     
-    if (!isSupabaseConfigured) {
-      setLoginError('Supabase não configurado. Verifique as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.');
-      return;
-    }
-
     try {
-      // Verificar se a tabela existe e se há usuários
-      const { count, error: countError } = await supabase
-        .from('app_users')
-        .select('*', { count: 'exact', head: true });
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginUsername, password: loginPassword })
+      });
 
-      if (countError) {
-        setLoginError(`Erro ao acessar banco de dados: ${countError.message}. Verifique se a tabela 'app_users' foi criada.`);
+      if (!response.ok) {
+        const err = await response.json();
+        setLoginError(err.error || 'Erro ao entrar');
         return;
       }
 
-      if (count === 0) {
-        setLoginError('Nenhum usuário cadastrado. Você precisa criar o primeiro usuário diretamente no painel do Supabase.');
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from('app_users')
-        .select('*')
-        .eq('username', loginUsername)
-        .eq('password', loginPassword)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          setLoginError('Usuário ou senha inválidos');
-        } else {
-          setLoginError(`Erro Supabase: ${error.message}`);
-        }
-        return;
-      }
-
-      if (!data) {
-        setLoginError('Usuário ou senha inválidos');
-        return;
-      }
-
+      const data = await response.json();
       setCurrentUser(data);
       setIsLoggedIn(true);
     } catch (error: any) {
@@ -257,17 +217,18 @@ export default function App() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { data, error } = await supabase
-        .from('app_users')
-        .insert([userFormData])
-        .select();
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userFormData)
+      });
 
-      if (error) throw error;
-      if (data) {
-        setSystemUsers([...systemUsers, data[0]]);
-        setIsUserModalOpen(false);
-        setUserFormData({ username: '', password: '', role: 'EDITOR' });
-      }
+      if (!response.ok) throw new Error('Erro ao criar usuário');
+      const data = await response.json();
+      
+      setSystemUsers([...systemUsers, data]);
+      setIsUserModalOpen(false);
+      setUserFormData({ username: '', password: '', role: 'EDITOR' });
     } catch (error) {
       alert('Erro ao cadastrar usuário');
     }
@@ -277,8 +238,8 @@ export default function App() {
     if (id === currentUser?.id) return alert('Você não pode excluir a si mesmo');
     if (window.confirm('Excluir este usuário?')) {
       try {
-        const { error } = await supabase.from('app_users').delete().eq('id', id);
-        if (error) throw error;
+        const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Erro ao excluir');
         setSystemUsers(systemUsers.filter(u => u.id !== id));
       } catch (error) {
         alert('Erro ao excluir usuário');
@@ -315,7 +276,7 @@ export default function App() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const orderData: Omit<ServiceOrder, 'id'> = {
+    const orderData: any = {
       tecnico: formData.tecnico!,
       cidade: formData.cidade!,
       data: formData.data!,
@@ -330,50 +291,41 @@ export default function App() {
       created_by: editingOrder ? editingOrder.created_by : (currentUser?.username || 'admin')
     };
 
+    if (editingOrder) {
+      orderData.id = editingOrder.id;
+    }
+
     try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) throw new Error('Erro ao salvar');
+      const data = await response.json();
+
       if (editingOrder) {
-        const { data, error } = await supabase
-          .from('service_orders')
-          .update(orderData)
-          .eq('id', editingOrder.id)
-          .select();
-
-        if (error) throw error;
-        if (data) {
-          setOrders(orders.map(o => o.id === editingOrder.id ? data[0] : o));
-          closeModal();
-        }
+        setOrders(orders.map(o => o.id === editingOrder.id ? { ...orderData, id: editingOrder.id } : o));
       } else {
-        const { data, error } = await supabase
-          .from('service_orders')
-          .insert([orderData])
-          .select();
-
-        if (error) throw error;
-        if (data) {
-          setOrders([data[0], ...orders]);
-          closeModal();
-        }
+        setOrders([data, ...orders]);
       }
+      closeModal();
     } catch (error) {
       console.error('Error saving order:', error);
-      alert('Erro ao salvar no Supabase. Verifique a conexão e as variáveis de ambiente.');
+      alert('Erro ao salvar no banco de dados da Hostinger.');
     }
   };
 
   const deleteOrder = async (id: string) => {
     if (window.confirm('Deseja realmente excluir este registro?')) {
       try {
-        const { error } = await supabase
-          .from('service_orders')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
+        const response = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Erro ao excluir');
         setOrders(orders.filter(o => o.id !== id));
       } catch (error) {
         console.error('Error deleting order:', error);
-        alert('Erro ao excluir do Supabase.');
+        alert('Erro ao excluir do banco de dados.');
       }
     }
   };
